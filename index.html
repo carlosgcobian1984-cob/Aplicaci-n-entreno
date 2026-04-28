@@ -610,28 +610,29 @@ Responde siempre en español, directo y práctico. Máximo 150 palabras salvo qu
 async function callClaude(single, history = null) {
   try {
     let contents = []
-    if (history) {
+    if (history && history.length > 0) {
       contents = history.map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }]
       }))
+      if (contents[0] && contents[0].role === 'user') {
+        contents[0].parts[0].text = SYS + '\n\n' + contents[0].parts[0].text
+      }
     } else {
-      contents = [{ role: 'user', parts: [{ text: single }] }]
+      contents = [{ role: 'user', parts: [{ text: SYS + '\n\n' + single }] }]
     }
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYS }] },
-          contents
-        })
+        body: JSON.stringify({ contents })
       }
     )
     const d = await r.json()
+    if (d.error) return 'Error: ' + d.error.message
     return d.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta.'
-  } catch { return 'Error conectando con el coach. Intenta de nuevo.' }
+  } catch(e) { return 'Error: ' + e.message }
 }
 
 // ─── NAV ───────────────────────────────────────────────────────────────────
