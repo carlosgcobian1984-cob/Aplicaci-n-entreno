@@ -367,8 +367,8 @@
 // ─── SUPABASE CONFIG ───────────────────────────────────────────────────────
 // 1. Ve a supabase.com > tu proyecto > Project Settings > API
 // 2. Copia "Project URL" y "anon public" key y pégalos aquí:
-const SUPABASE_URL  = 'https://ouchfjlddvzwrmdzqagt.supabase.co'
-const SUPABASE_ANON = 'sb_publishable_C6AuuJyKcnTHV22ORlzblw_0av2ZqRp'
+const SUPABASE_URL  = 'https://TU_PROJECT_URL.supabase.co'
+const SUPABASE_ANON = 'TU_ANON_KEY'
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
 
 // ─── FECHAS ────────────────────────────────────────────────────────────────
@@ -596,7 +596,10 @@ function updateLastMsg(text) {
   if (el) { el.textContent = text; el.style.fontStyle = ''; el.style.color = ''; el.removeAttribute('id') }
 }
 
-// ─── LLAMADA A CLAUDE ──────────────────────────────────────────────────────
+// ─── GEMINI CONFIG ─────────────────────────────────────────────────────────
+// Obtén tu API key gratis en: aistudio.google.com → Get API Key
+const GEMINI_KEY = 'TU_GEMINI_API_KEY'
+
 const SYS = `Eres el coach personal de HYROX y running de Carlos Cobián (Madrid).
 Perfil: HYROX Valencia Open Individual 17 oct 2026, media maratón Madrid 2027.
 Ritmo 10K actual: 6:30/km en cinta. Objetivo media: 2h15. Entrena 6 días/semana gym + box.
@@ -606,16 +609,28 @@ Responde siempre en español, directo y práctico. Máximo 150 palabras salvo qu
 
 async function callClaude(single, history = null) {
   try {
-    const messages = history
-      ? [{ role:'user', content: SYS + '\n\nRespóndeme en español.' }, { role:'assistant', content:'Entendido.' }, ...history]
-      : [{ role:'user', content: SYS + '\n\n' + single }]
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages })
-    })
+    let contents = []
+    if (history) {
+      contents = history.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }))
+    } else {
+      contents = [{ role: 'user', parts: [{ text: single }] }]
+    }
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYS }] },
+          contents
+        })
+      }
+    )
     const d = await r.json()
-    return d.content?.[0]?.text || 'Sin respuesta.'
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta.'
   } catch { return 'Error conectando con el coach. Intenta de nuevo.' }
 }
 
