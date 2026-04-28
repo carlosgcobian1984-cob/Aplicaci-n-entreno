@@ -367,8 +367,8 @@
 // ─── SUPABASE CONFIG ───────────────────────────────────────────────────────
 // 1. Ve a supabase.com > tu proyecto > Project Settings > API
 // 2. Copia "Project URL" y "anon public" key y pégalos aquí:
-const SUPABASE_URL  = 'https://TU_PROJECT_URL.supabase.co'
-const SUPABASE_ANON = 'TU_ANON_KEY'
+const SUPABASE_URL  = 'https://ouchfjlddvzwrmdzqagt.supabase.co'
+const SUPABASE_ANON = 'sb_publishable_C6AuuJyKcnTHV22ORlzblw_0av2ZqRp'
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
 
 // ─── FECHAS ────────────────────────────────────────────────────────────────
@@ -598,7 +598,7 @@ function updateLastMsg(text) {
 
 // ─── GEMINI CONFIG ─────────────────────────────────────────────────────────
 // Obtén tu API key gratis en: aistudio.google.com → Get API Key
-const GEMINI_KEY = 'AIzaSyDoPUTwXOR2C15hAx31Pjc9EFBd7wqhImE'
+const GEMINI_KEY = ´AIzaSyDoPUTwXOR2C15hAx31Pjc9EFBd7wqhImE'
 
 const SYS = `Eres el coach personal de HYROX y running de Carlos Cobián (Madrid).
 Perfil: HYROX Valencia Open Individual 17 oct 2026, media maratón Madrid 2027.
@@ -619,7 +619,7 @@ async function callClaude(single, history = null) {
       contents = [{ role: 'user', parts: [{ text: single }] }]
     }
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
