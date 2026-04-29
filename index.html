@@ -161,11 +161,12 @@
 
   <div class="nav">
     <button class="nav-btn active" onclick="showSec('hoy',this)">Hoy</button>
-    <button class="nav-btn" onclick="showSec('semana',this)">Semana</button>
+    <button class="nav-btn" onclick="showSec('semana',this)">Plan</button>
+    <button class="nav-btn" onclick="showSec('misemana',this)">Mi Semana</button>
     <button class="nav-btn" onclick="showSec('whoop',this)">Whoop</button>
+    <button class="nav-btn" onclick="showSec('entreno',this)">Entreno</button>
     <button class="nav-btn" onclick="showSec('metricas',this)">Métricas</button>
     <button class="nav-btn" onclick="showSec('simulador',this)">Simulador</button>
-    <button class="nav-btn" onclick="showSec('coach',this)">Coach IA</button>
   </div>
 
   <!-- HOY -->
@@ -231,15 +232,6 @@
       </div>
     </div>
 
-    <div class="block">
-      <div class="block-header"><span class="block-title">🤖 Feedback del día → Coach IA</span></div>
-      <div class="block-body">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">¿Cómo ha ido? La IA ajustará el plan según tu respuesta.</div>
-        <textarea id="daily-fb" rows="2" placeholder="Ej: mucho cansancio en los intervalos, carga del sled bien..."></textarea>
-        <button class="btn" style="margin-top:8px" onclick="sendDailyFB()">Enviar y ajustar plan ↗</button>
-        <div class="ai-response" id="ai-daily-resp"></div>
-      </div>
-    </div>
   </div>
 
   <!-- SEMANA -->
@@ -263,6 +255,25 @@
       <div class="card" style="border-left:3px solid var(--accent)"><div class="phase-badge phase2">Fase 3 · Oct 2026</div><div style="font-size:13px;font-weight:500;margin-top:2px">Tapering + HYROX Valencia</div><div style="font-size:12px;color:var(--muted);margin-top:3px">Reducción volumen, activaciones, carrera el 17 oct</div></div>
       <div class="card" style="border-left:3px solid var(--green)"><div class="phase-badge phase3">Fase 4 · Nov 2026–Feb 2027</div><div style="font-size:13px;font-weight:500;margin-top:2px">Transición → Media Maratón</div><div style="font-size:12px;color:var(--muted);margin-top:3px">Construcción volumen carrera, de 10K a 21K, objetivo 2h15</div></div>
     </div>
+  </div>
+
+  <!-- MI SEMANA -->
+  <div id="sec-misemana" class="section">
+    <div class="section-title">MI SEMANA</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Configura tu disponibilidad real esta semana. El coach la usará para ajustar el plan.</div>
+
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px" id="semana-label-actual"></div>
+
+    <div id="misemana-dias" style="display:flex;flex-direction:column;gap:8px"></div>
+
+    <button class="btn" style="margin-top:14px" onclick="saveMiSemana()">Guardar semana ✓</button>
+    <div id="misemana-saved" style="display:none;background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px;margin-top:10px;font-size:12px;color:var(--muted)">
+      Semana guardada. El coach tiene en cuenta tu disponibilidad.
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">SEMANAS ANTERIORES</div>
+    <div id="misemana-hist"><div class="loading">Cargando...</div></div>
   </div>
 
   <!-- WHOOP -->
@@ -340,24 +351,66 @@
     <div id="sim-hist"><div class="loading">Cargando...</div></div>
   </div>
 
-  <!-- COACH IA -->
-  <div id="sec-coach" class="section">
-    <div class="section-title">COACH IA</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Chat con tu coach personal. Historial guardado en Supabase.</div>
-    <div id="chat-box" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:360px;overflow-y:auto;padding:4px 0">
-      <div class="chat-msg"><div class="chat-meta">Coach IA</div><div class="chat-bubble coach">Hola Carlos. Soy tu coach para HYROX Valencia (17 oct 2026) y la Media Maratón de Madrid 2027. ¿En qué te ayudo hoy?</div></div>
+  <!-- ENTRENO -->
+  <div id="sec-entreno" class="section">
+    <div class="section-title">MI ENTRENAMIENTO</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Registra lo que hiciste realmente cada día — aunque no sea lo planificado.</div>
+
+    <!-- Registro rápido -->
+    <div class="block">
+      <div class="block-header"><span class="block-title">➕ Registrar entreno de hoy</span></div>
+      <div class="block-body">
+        <div class="grid2">
+          <div class="field">
+            <label>Fecha</label>
+            <input type="date" id="e-date" />
+          </div>
+          <div class="field">
+            <label>Tipo</label>
+            <select id="e-type">
+              <option value="gym">🏋️ Gym</option>
+              <option value="box">🥊 Box</option>
+              <option value="run">🏃 Carrera</option>
+              <option value="gym+box">🏋️🥊 Gym + Box (doble)</option>
+              <option value="hyrox">⚡ Simulacro HYROX</option>
+              <option value="mobility">🧘 Movilidad</option>
+              <option value="rest">😴 Descanso</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Duración (min)</label>
+            <input type="number" id="e-dur" placeholder="65" />
+          </div>
+          <div class="field">
+            <label>RPE (1–10)</label>
+            <input type="number" id="e-rpe" min="1" max="10" placeholder="7" />
+          </div>
+          <div class="field">
+            <label>Ritmo / Carga destacada</label>
+            <input type="text" id="e-pace" placeholder="5:50/km · 100kg squat" />
+          </div>
+          <div class="field">
+            <label>¿Se hizo lo planificado?</label>
+            <select id="e-completed">
+              <option value="si">✅ Sí, todo</option>
+              <option value="parcial">⚠️ Parcialmente</option>
+              <option value="no">❌ No se hizo</option>
+              <option value="extra">💪 Hice más de lo planificado</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Notas libres — qué hiciste, cómo fue, por qué cambió...</label>
+          <textarea id="e-notes" rows="3" placeholder="Ej: hoy no hice el box de la mañana, solo fui al gym por la tarde. Sentadilla bien a 95kg, pero los intervalos de carrera los recorté a 4 porque tenía las piernas cargadas del día anterior..."></textarea>
+        </div>
+        <button class="btn" onclick="saveEntreno()">Guardar entrenamiento ✓</button>
+        <div id="coach-adjust" style="display:none;background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:12px;margin-top:10px"></div>
+      </div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-      <button class="btn-ghost" onclick="quickAsk('¿Cómo adapto el plan si esta semana estoy muy cargado de trabajo?')">Semana cargada ↗</button>
-      <button class="btn-ghost" onclick="quickAsk('Dame consejos de nutrición para el día de carrera HYROX')">Nutrición race day ↗</button>
-      <button class="btn-ghost" onclick="quickAsk('¿Cómo progreso de 10K a 21K para la media maratón de Madrid 2027?')">10K → 21K ↗</button>
-      <button class="btn-ghost" onclick="quickAsk('¿Qué suplementos son clave para este doble reto?')">Suplementación ↗</button>
-      <button class="btn-ghost" onclick="quickAsk('Explícame cómo interpretar mi recovery score de Whoop para ajustar el entreno del día')">Interpretar Whoop ↗</button>
-    </div>
-    <div style="display:flex;gap:8px">
-      <input id="coach-in" placeholder="Pregunta al coach..." onkeydown="if(event.key==='Enter')askCoach()" />
-      <button class="btn" style="width:auto;padding:10px 18px" onclick="askCoach()">↗</button>
-    </div>
+
+    <!-- Historial -->
+    <div class="section-title" style="margin-top:4px">HISTORIAL</div>
+    <div id="entreno-hist"><div class="loading">Cargando...</div></div>
   </div>
 
 </div>
@@ -396,7 +449,8 @@ async function init() {
   const MONS = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC']
   document.getElementById('today-lbl').textContent = DAYS[now.getDay()] + ' ' + now.getDate() + ' ' + MONS[now.getMonth()]
   await checkDB()
-  loadSessions(); loadWhoopHist(); loadSimHist(); loadTodayWhoop()
+  loadSessions(); loadWhoopHist(); loadSimHist(); loadTodayWhoop(); loadEntrenoHist(); loadMiSemana(); loadMiSemanaHist()
+  document.getElementById('e-date').value = todayISO()
 }
 
 async function checkDB() {
@@ -462,11 +516,6 @@ async function saveWhoop() {
     const { error } = await sb.from('whoop_data').upsert(payload, { onConflict: 'date' })
     if (error) throw error
     toast('Datos Whoop guardados ✓')
-    if (rec) {
-      const r = document.getElementById('ai-whoop-resp')
-      r.style.display = 'block'; r.textContent = 'Analizando recovery...'
-      r.textContent = await callClaude(`Recovery de hoy: ${rec}/100. HRV: ${payload.hrv||'—'}ms. Strain: ${payload.strain||'—'}. En 3 puntos: 1) Interpretación, 2) Intensidad recomendada hoy, 3) Qué vigilar.`)
-    }
     loadWhoopHist(); loadTodayWhoop()
   } catch(e) { toast('Error: ' + e.message) }
 }
@@ -552,95 +601,178 @@ async function loadSimHist() {
   } catch {}
 }
 
-// ─── FEEDBACK DIARIO ───────────────────────────────────────────────────────
-async function sendDailyFB() {
-  const fb = document.getElementById('daily-fb').value.trim()
-  if (!fb) return
-  const r = document.getElementById('ai-daily-resp')
-  r.style.display = 'block'; r.textContent = 'Analizando y ajustando plan...'
-  const ans = await callClaude(`Feedback de hoy (sesión doble Gym+Box): "${fb}". Dame 2-3 ajustes concretos para el resto de la semana.`)
-  r.textContent = ans
-  try { await sb.from('ai_feedback').insert({ date: todayISO(), context: 'daily', user_msg: fb, ai_response: ans }) } catch {}
+// ─── ENTRENO ───────────────────────────────────────────────────────────────
+async function saveEntreno() {
+  const date  = document.getElementById('e-date').value || todayISO()
+  const type  = document.getElementById('e-type').value
+  const dur   = parseInt(document.getElementById('e-dur').value) || null
+  const rpe   = parseInt(document.getElementById('e-rpe').value) || null
+  const pace  = document.getElementById('e-pace').value || null
+  const comp  = document.getElementById('e-completed').value
+  const notes = document.getElementById('e-notes').value || null
+  if (!notes && !dur) { toast('Añade al menos una nota o duración'); return }
+  try {
+    const { error } = await sb.from('sessions').insert({ date, type, duration: dur, rpe, pace, notes: (comp !== 'si' ? '['+comp.toUpperCase()+'] ' : '') + (notes || '') })
+    if (error) throw error
+    toast('Entrenamiento guardado ✓')
+    ;['e-dur','e-rpe','e-pace','e-notes'].forEach(id => document.getElementById(id).value = '')
+    document.getElementById('e-completed').value = 'si'
+    loadEntrenoHist()
+
+    // Si no se completó, pedir ajuste al coach
+    if (comp === 'no' || comp === 'parcial') {
+      const adj = document.getElementById('coach-adjust')
+      adj.style.display = 'block'
+      adj.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:12px">Consultando al coach...</div>'
+      const typeLabels = {gym:'Gym',box:'Box',run:'Carrera','gym+box':'Gym+Box',hyrox:'Simulacro HYROX',mobility:'Movilidad',rest:'Descanso'}
+      const prompt = `Hoy ${comp === 'no' ? 'no he podido hacer' : 'he hecho parcialmente'} el entreno de ${typeLabels[type]||type}${notes ? '. Motivo/notas: '+notes : ''}. ¿Cómo ajusto el resto del día o de la semana para compensar?`
+      const resp = await callCoach(prompt)
+      adj.innerHTML = `<div style="font-size:12px;line-height:1.7">${resp}</div>`
+    }
+  } catch(e) { toast('Error: ' + e.message) }
 }
 
-// ─── COACH CHAT ────────────────────────────────────────────────────────────
-const chatHist = []
-
-async function askCoach() {
-  const inp = document.getElementById('coach-in')
-  const q = inp.value.trim(); if (!q) return
-  inp.value = ''
-  addMsg('user', q); addMsg('coach', '...', true)
-  chatHist.push({ role: 'user', content: q })
-  const ans = await callClaude(null, chatHist)
-  chatHist.push({ role: 'assistant', content: ans })
-  updateLastMsg(ans)
-  try { await sb.from('ai_feedback').insert({ date: todayISO(), context: 'chat', user_msg: q, ai_response: ans }) } catch {}
+async function loadEntrenoHist() {
+  try {
+    const { data } = await sb.from('sessions').select('*').order('date',{ascending:false}).limit(30)
+    const el = document.getElementById('entreno-hist')
+    if (!data || !data.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px">Sin entrenamientos registrados aún.</div>'; return }
+    const icons = {gym:'🏋️', box:'🥊', run:'🏃', 'gym+box':'🏋️🥊', hyrox:'⚡', mobility:'🧘', rest:'😴'}
+    const bgs   = {gym:'#4488ff20', box:'#ff6b3520', run:'#44ff8820', 'gym+box':'#e8ff4720', hyrox:'#e8ff4720', mobility:'#66666620', rest:'#33333320'}
+    const labels = {gym:'Gym', box:'Box', run:'Carrera', 'gym+box':'Gym + Box', hyrox:'Simulacro HYROX', mobility:'Movilidad', rest:'Descanso'}
+    el.innerHTML = data.map(s => {
+      const notesText = s.notes || ''
+      const tag = notesText.startsWith('[PARCIAL]') ? '⚠️' : notesText.startsWith('[NO]') ? '❌' : notesText.startsWith('[EXTRA]') ? '💪' : '✅'
+      const cleanNotes = notesText.replace(/^\[(PARCIAL|NO|EXTRA|SI)\]\s*/,'')
+      return `<div class="feed-item">
+        <div class="feed-icon" style="background:${bgs[s.type]||'#66666620'};font-size:16px">${icons[s.type]||'📋'}</div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;font-weight:500">${tag} ${labels[s.type]||s.type}</span>
+            ${s.duration?`<span style="font-size:11px;color:var(--muted)">${s.duration}min</span>`:''}
+            ${s.rpe?`<span style="font-size:11px;color:var(--muted)">RPE ${s.rpe}</span>`:''}
+          </div>
+          <div class="feed-date">${fmtDate(s.date)}${s.pace?' · '+s.pace:''}</div>
+          ${cleanNotes?`<div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5">${cleanNotes}</div>`:''}
+        </div>
+      </div>`
+    }).join('')
+  } catch(e) { document.getElementById('entreno-hist').innerHTML = '<div style="color:var(--muted);font-size:12px">Error cargando historial.</div>' }
 }
 
-function quickAsk(q) {
-  showSec('coach', document.querySelectorAll('.nav-btn')[5])
-  document.getElementById('coach-in').value = q; askCoach()
-}
-
-function addMsg(role, text, loading = false) {
-  const c = document.getElementById('chat-box')
-  const d = document.createElement('div')
-  d.className = 'chat-msg ' + role
-  d.innerHTML = `<div class="chat-meta">${role==='user'?'Carlos':'Coach IA'}</div><div class="chat-bubble ${role}" ${loading?'id="last-msg" style="color:var(--muted);font-style:italic"':''}>${text}</div>`
-  c.appendChild(d); c.scrollTop = c.scrollHeight
-}
-
-function updateLastMsg(text) {
-  const el = document.getElementById('last-msg')
-  if (el) { el.textContent = text; el.style.fontStyle = ''; el.style.color = ''; el.removeAttribute('id') }
-}
-
-// ─── GEMINI CONFIG ─────────────────────────────────────────────────────────
-// Obtén tu API key gratis en: aistudio.google.com → Get API Key
-const GEMINI_KEY = 'AIzaSyBO32DmKTNBUeteroujQPx2fKsu9j4pPGQ'
-
-const SYS = `Eres el coach personal de HYROX y running de Carlos Cobián (Madrid).
+// ─── CLAUDE API ────────────────────────────────────────────────────────────
+const ANTHROPIC_KEY = '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'
+const COACH_SYS = `Eres el coach personal de HYROX y running de Carlos Cobián (Madrid).
 Perfil: HYROX Valencia Open Individual 17 oct 2026, media maratón Madrid 2027.
 Ritmo 10K actual: 6:30/km en cinta. Objetivo media: 2h15. Entrena 6 días/semana gym + box.
-Plan dairy-free. Suplementación activa: creatina 5g, omega-3, magnesio 350mg, HMB 3800, beta-alanina.
-Desde 5 mayo 2026 usa pulsera Whoop. Plan adaptativo por recovery score: verde=carga alta, amarillo=mantener/bajar, rojo=descanso activo.
-Responde siempre en español, directo y práctico. Máximo 150 palabras salvo que pidan más detalle.`
+Plan dairy-free. Suplementación: creatina 5g, omega-3, magnesio 350mg, HMB 3800, beta-alanina.
+Desde 5 mayo 2026 usa Whoop. Plan adaptativo: verde=carga alta, amarillo=bajar intensidad, rojo=descanso activo.
+Responde siempre en español, directo y práctico. Máximo 120 palabras.`
 
-async function callClaude(single, history = null) {
+async function callCoach(msg) {
   try {
-    let contents = []
-    if (history && history.length > 0) {
-      contents = history.map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }))
-      if (contents[0] && contents[0].role === 'user') {
-        contents[0].parts[0].text = SYS + '\n\n' + contents[0].parts[0].text
-      }
-    } else {
-      contents = [{ role: 'user', parts: [{ text: SYS + '\n\n' + single }] }]
-    }
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents })
-      }
-    )
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        system: COACH_SYS,
+        messages: [{ role: 'user', content: msg }]
+      })
+    })
     const d = await r.json()
-    if (d.error) return 'Error: ' + d.error.message
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta.'
+    return d.content?.[0]?.text || 'Sin respuesta.'
   } catch(e) { return 'Error: ' + e.message }
 }
-
-// ─── NAV ───────────────────────────────────────────────────────────────────
 function showSec(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('sec-' + id).classList.add('active')
   if (btn) btn.classList.add('active')
+}
+
+// ─── MI SEMANA ─────────────────────────────────────────────────────────────
+const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+const TIPOS_SESSION = ['🏋️ Gym','🥊 Box','🏋️🥊 Gym + Box','🏃 Carrera','⚡ Simulacro HYROX','🧘 Movilidad','😴 Descanso']
+
+function getWeekKey() {
+  const now = new Date()
+  const day = now.getDay() === 0 ? 6 : now.getDay() - 1
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - day)
+  return monday.toISOString().split('T')[0]
+}
+
+function getWeekLabel(key) {
+  const monday = new Date(key + 'T00:00:00')
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6)
+  return `Semana del ${monday.getDate()} al ${sunday.getDate()} de ${sunday.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}`
+}
+
+function initMiSemana(savedData = null) {
+  const weekKey = getWeekKey()
+  document.getElementById('semana-label-actual').textContent = getWeekLabel(weekKey)
+  const container = document.getElementById('misemana-dias')
+  container.innerHTML = DIAS.map((dia, i) => {
+    const saved = savedData ? savedData[i] : null
+    return `<div class="block"><div class="block-body" style="padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;width:86px;color:var(--text);flex-shrink:0">${dia}</div>
+        <select id="ms-type-${i}" style="flex:1;min-width:150px;padding:7px 10px;font-size:12px">
+          ${TIPOS_SESSION.map(t => `<option ${saved&&saved.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <input type="time" id="ms-time1-${i}" value="${saved&&saved.time1||''}" style="width:88px;padding:7px 8px;font-size:12px" />
+        <input type="time" id="ms-time2-${i}" value="${saved&&saved.time2||''}" style="width:88px;padding:7px 8px;font-size:12px" />
+        <input type="text" id="ms-notes-${i}" value="${saved&&saved.notes||''}" style="flex:1;min-width:100px;padding:7px 8px;font-size:12px" placeholder="Notas" />
+      </div>
+    </div></div>`
+  }).join('')
+}
+
+async function saveMiSemana() {
+  const weekKey = getWeekKey()
+  const dias = DIAS.map((_, i) => ({
+    type:  document.getElementById(`ms-type-${i}`).value,
+    time1: document.getElementById(`ms-time1-${i}`).value || null,
+    time2: document.getElementById(`ms-time2-${i}`).value || null,
+    notes: document.getElementById(`ms-notes-${i}`).value || null,
+  }))
+  try {
+    const { error } = await sb.from('weekly_schedule').upsert({ week_start: weekKey, dias }, { onConflict: 'week_start' })
+    if (error) throw error
+    toast('Semana guardada ✓')
+    document.getElementById('misemana-saved').style.display = 'block'
+    loadMiSemanaHist()
+  } catch(e) { toast('Error: ' + e.message) }
+}
+
+async function loadMiSemana() {
+  try {
+    const { data } = await sb.from('weekly_schedule').select('*').eq('week_start', getWeekKey()).single()
+    initMiSemana(data ? data.dias : null)
+  } catch { initMiSemana(null) }
+}
+
+async function loadMiSemanaHist() {
+  try {
+    const { data } = await sb.from('weekly_schedule').select('*').order('week_start',{ascending:false}).limit(8)
+    const el = document.getElementById('misemana-hist')
+    if (!data||!data.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px">Sin semanas guardadas aún.</div>'; return }
+    el.innerHTML = data.map(w => {
+      const dias = w.dias || []
+      const resumen = dias.map((d,i) => `<div style="font-size:11px"><span style="color:var(--muted)">${DIAS[i].slice(0,3)}</span> <span style="color:var(--text)">${d.type.replace(/^[^\s]+\s/,'')}</span>${d.time1?` <span style="color:var(--accent)">${d.time1}</span>`:''}</div>`).join('')
+      return `<div class="block" style="margin-bottom:8px"><div class="block-body" style="padding:12px 14px">
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--accent)">${getWeekLabel(w.week_start)}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px">${resumen}</div>
+      </div></div>`
+    }).join('')
+  } catch {}
 }
 
 // ─── TOAST ─────────────────────────────────────────────────────────────────
