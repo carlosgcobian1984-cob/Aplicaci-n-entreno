@@ -241,9 +241,17 @@
   <!-- MI SEMANA -->
   <div id="sec-misemana" class="section">
     <div class="section-title">MI SEMANA</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Configura tu disponibilidad real esta semana. El coach la usará para ajustar el plan.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Configura tu disponibilidad real. Puedes preparar semanas futuras con antelación.</div>
 
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px" id="semana-label-actual"></div>
+    <!-- Navegador de semanas -->
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px">
+      <button onclick="changeWeek(-1)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text);font-size:13px;cursor:pointer">← Anterior</button>
+      <div style="text-align:center">
+        <div style="font-size:12px;font-weight:500;color:var(--text)" id="semana-label-actual">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px" id="semana-badge">—</div>
+      </div>
+      <button onclick="changeWeek(1)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text);font-size:13px;cursor:pointer">Siguiente →</button>
+    </div>
 
     <div id="misemana-dias" style="display:flex;flex-direction:column;gap:8px"></div>
 
@@ -253,7 +261,7 @@
     </div>
 
     <div class="divider"></div>
-    <div class="section-title">SEMANAS ANTERIORES</div>
+    <div class="section-title">SEMANAS GUARDADAS</div>
     <div id="misemana-hist"><div class="loading">Cargando...</div></div>
   </div>
 
@@ -782,23 +790,41 @@ function renderSesionBlock(title, time, ejercicios, notes) {
 const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
 const TIPOS_SESSION = ['🏋️ Gym','🥊 Box','🏋️🥊 Gym + Box','🏃 Carrera','⚡ Simulacro HYROX','🧘 Movilidad','😴 Descanso']
 
-function getWeekKey() {
+let currentWeekOffset = 0  // 0 = esta semana, 1 = próxima, -1 = anterior
+
+function getWeekKey(offset = 0) {
   const now = new Date()
   const day = now.getDay() === 0 ? 6 : now.getDay() - 1
   const monday = new Date(now)
-  monday.setDate(now.getDate() - day)
+  monday.setDate(now.getDate() - day + offset * 7)
   return monday.toISOString().split('T')[0]
 }
 
 function getWeekLabel(key) {
   const monday = new Date(key + 'T00:00:00')
   const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6)
-  return `Semana del ${monday.getDate()} al ${sunday.getDate()} de ${sunday.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}`
+  return `${monday.getDate()} – ${sunday.getDate()} ${sunday.toLocaleDateString('es-ES',{month:'long',year:'numeric'})}`
+}
+
+function changeWeek(delta) {
+  currentWeekOffset += delta
+  document.getElementById('misemana-saved').style.display = 'none'
+  loadMiSemana()
+}
+
+function updateWeekBadge() {
+  const badge = document.getElementById('semana-badge')
+  if (currentWeekOffset === 0) badge.textContent = '📍 Esta semana'
+  else if (currentWeekOffset === 1) badge.textContent = '⏭️ Próxima semana'
+  else if (currentWeekOffset === -1) badge.textContent = '⏮️ Semana anterior'
+  else if (currentWeekOffset > 1) badge.textContent = `+${currentWeekOffset} semanas`
+  else badge.textContent = `${currentWeekOffset} semanas`
 }
 
 function initMiSemana(savedData = null) {
-  const weekKey = getWeekKey()
+  const weekKey = getWeekKey(currentWeekOffset)
   document.getElementById('semana-label-actual').textContent = getWeekLabel(weekKey)
+  updateWeekBadge()
   const container = document.getElementById('misemana-dias')
   container.innerHTML = DIAS.map((dia, i) => {
     const saved = savedData ? savedData[i] : null
@@ -817,7 +843,7 @@ function initMiSemana(savedData = null) {
 }
 
 async function saveMiSemana() {
-  const weekKey = getWeekKey()
+  const weekKey = getWeekKey(currentWeekOffset)
   const dias = DIAS.map((_, i) => ({
     type:  document.getElementById(`ms-type-${i}`).value,
     time1: document.getElementById(`ms-time1-${i}`).value || null,
@@ -829,21 +855,29 @@ async function saveMiSemana() {
     if (error) throw error
     toast('Semana guardada ✓')
     document.getElementById('misemana-saved').style.display = 'block'
-    // Refrescar hoy
-    const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
-    renderHoy(dias[todayIdx])
+    // Refrescar hoy solo si es la semana actual
+    if (currentWeekOffset === 0) {
+      const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+      renderHoy(dias[todayIdx])
+    }
     loadMiSemanaHist()
   } catch(e) { toast('Error: ' + e.message) }
 }
 
 async function loadMiSemana() {
   try {
-    const { data } = await sb.from('weekly_schedule').select('*').eq('week_start', getWeekKey()).single()
+    const weekKey = getWeekKey(currentWeekOffset)
+    const { data } = await sb.from('weekly_schedule').select('*').eq('week_start', weekKey).single()
     initMiSemana(data ? data.dias : null)
-    // Render hoy — día de la semana (0=lun...6=dom)
-    const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
-    renderHoy(data ? data.dias[todayIdx] : null)
-  } catch { initMiSemana(null); renderHoy(null) }
+    // Render hoy solo si estamos en la semana actual
+    if (currentWeekOffset === 0) {
+      const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+      renderHoy(data ? data.dias[todayIdx] : null)
+    }
+  } catch {
+    initMiSemana(null)
+    if (currentWeekOffset === 0) renderHoy(null)
+  }
 }
 
 async function loadMiSemanaHist() {
@@ -851,11 +885,16 @@ async function loadMiSemanaHist() {
     const { data } = await sb.from('weekly_schedule').select('*').order('week_start',{ascending:false}).limit(8)
     const el = document.getElementById('misemana-hist')
     if (!data||!data.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px">Sin semanas guardadas aún.</div>'; return }
+    const currentKey = getWeekKey(0)
     el.innerHTML = data.map(w => {
       const dias = w.dias || []
+      const isCurrentWeek = w.week_start === currentKey
       const resumen = dias.map((d,i) => `<div style="font-size:11px"><span style="color:var(--muted)">${DIAS[i].slice(0,3)}</span> <span style="color:var(--text)">${d.type.replace(/^[^\s]+\s/,'')}</span>${d.time1?` <span style="color:var(--accent)">${d.time1}</span>`:''}</div>`).join('')
-      return `<div class="block" style="margin-bottom:8px"><div class="block-body" style="padding:12px 14px">
-        <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--accent)">${getWeekLabel(w.week_start)}</div>
+      return `<div class="block" style="margin-bottom:8px;${isCurrentWeek?'border-color:var(--accent)':''}"><div class="block-body" style="padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="font-size:12px;font-weight:500;color:var(--accent)">${getWeekLabel(w.week_start)}</div>
+          ${isCurrentWeek?'<span style="font-size:10px;background:#e8ff4720;color:var(--accent);border:1px solid #e8ff4740;border-radius:4px;padding:2px 6px">Esta semana</span>':''}
+        </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px">${resumen}</div>
       </div></div>`
     }).join('')
