@@ -174,7 +174,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div>
         <div class="section-title" style="margin-bottom:2px" id="today-lbl">—</div>
-        <div style="font-size:12px;color:var(--muted)">Sesión doble · Box 9:30 + Gym 17:30</div>
+        <div style="font-size:12px;color:var(--muted)" id="today-sublbl">Cargando plan del día...</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:11px;color:var(--muted)">Completado</div>
@@ -210,27 +210,8 @@
       </div>
     </div>
 
-    <div class="block">
-      <div class="block-header"><span class="block-title">🥊 Box · 9:30h</span><span class="tag tag-gym">Cardio funcional</span></div>
-      <div class="block-body">
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Calentamiento dinámico</span><span class="ex-detail">10 min</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Intervalos SkiErg</span><span class="ex-detail">6×2min / 1min rest</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Sled push (carga ligera)</span><span class="ex-detail">4×20m</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Sandbag carry</span><span class="ex-detail">4×30m</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Carrera 1km al ritmo objetivo</span><span class="ex-detail">5:45/km</span></div>
-      </div>
-    </div>
-
-    <div class="block">
-      <div class="block-header"><span class="block-title">🏋️ Gym · 17:30h</span><span class="tag tag-gym">Fuerza + resistencia</span></div>
-      <div class="block-body">
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Sentadilla + press militar</span><span class="ex-detail">4×8 · 75% 1RM</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Peso muerto rumano</span><span class="ex-detail">3×10</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Burpee broad jump</span><span class="ex-detail">3×8</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Remo en máquina</span><span class="ex-detail">3×500m moderado</span></div>
-        <div class="exercise-row"><div class="ex-check" onclick="toggleEx(this)"></div><span class="ex-name">Core: hollow hold + L-sit</span><span class="ex-detail">3×30s</span></div>
-      </div>
-    </div>
+    <!-- Sesiones del día — se renderizan dinámicamente desde Mi Semana -->
+    <div id="hoy-sesiones"></div>
 
   </div>
 
@@ -697,6 +678,106 @@ function showSec(id, btn) {
   if (btn) btn.classList.add('active')
 }
 
+// ─── RENDER HOY DESDE MI SEMANA ────────────────────────────────────────────
+const EJERCICIOS = {
+  'gym': [
+    {name:'Sentadilla + press militar', detail:'4×8 · 75% 1RM'},
+    {name:'Peso muerto rumano', detail:'3×10'},
+    {name:'Burpee broad jump', detail:'3×8'},
+    {name:'Remo en máquina', detail:'3×500m moderado'},
+    {name:'Core: hollow hold + L-sit', detail:'3×30s'},
+  ],
+  'box': [
+    {name:'Calentamiento dinámico', detail:'10 min'},
+    {name:'Intervalos SkiErg', detail:'6×2min / 1min rest'},
+    {name:'Sled push (carga ligera)', detail:'4×20m'},
+    {name:'Sandbag carry', detail:'4×30m'},
+    {name:'Carrera 1km al ritmo objetivo', detail:'5:45/km'},
+  ],
+  'run': [
+    {name:'Calentamiento 5 min', detail:'trote suave'},
+    {name:'Carrera continua Z2', detail:'ritmo 6:15/km'},
+    {name:'Vuelta a la calma', detail:'5 min'},
+  ],
+  'hyrox': [
+    {name:'Calentamiento específico', detail:'15 min'},
+    {name:'Run 1km + SkiErg 1000m', detail:'al ritmo objetivo'},
+    {name:'Run 1km + Sled Push 50m', detail:'al ritmo objetivo'},
+    {name:'Run 1km + Burpee BJ 80m', detail:'al ritmo objetivo'},
+    {name:'Run 1km + Remo 1000m', detail:'al ritmo objetivo'},
+  ],
+  'mobility': [
+    {name:'Movilidad cadera y tobillo', detail:'10 min'},
+    {name:'Foam roller piernas', detail:'10 min'},
+    {name:'Estiramientos cadena posterior', detail:'10 min'},
+  ],
+}
+
+const SESSION_ICONS = {
+  '🏋️ Gym':'🏋️', '🥊 Box':'🥊', '🏋️🥊 Gym + Box':'🏋️🥊',
+  '🏃 Carrera':'🏃', '⚡ Simulacro HYROX':'⚡', '🧘 Movilidad':'🧘', '😴 Descanso':'😴'
+}
+
+function renderHoy(diaData) {
+  const container = document.getElementById('hoy-sesiones')
+  const sublbl = document.getElementById('today-sublbl')
+
+  if (!diaData || diaData.type === '😴 Descanso') {
+    sublbl.textContent = diaData ? '😴 Día de descanso' : 'Sin plan configurado — ve a Mi Semana'
+    container.innerHTML = `<div class="block"><div class="block-body" style="text-align:center;padding:24px">
+      <div style="font-size:32px;margin-bottom:8px">${diaData ? '😴' : '📅'}</div>
+      <div style="font-size:13px;font-weight:500">${diaData ? 'Día de descanso' : 'No hay plan para hoy'}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">${diaData ? 'Recupera bien.' : 'Configura tu semana en la pestaña Mi Semana.'}</div>
+    </div></div>`
+    return
+  }
+
+  const type = diaData.type
+  const icon = SESSION_ICONS[type] || '📋'
+  const time1 = diaData.time1 || ''
+  const time2 = diaData.time2 || ''
+  const notes = diaData.notes || ''
+
+  // Subtítulo dinámico
+  sublbl.textContent = type + (time1 ? ' · ' + time1 : '') + (time2 ? ' y ' + time2 : '')
+
+  // Gym + Box — dos bloques
+  if (type === '🏋️🥊 Gym + Box') {
+    container.innerHTML = renderSesionBlock('🥊 Box', time1, EJERCICIOS['box'], notes) +
+                          renderSesionBlock('🏋️ Gym', time2, EJERCICIOS['gym'], '')
+    return
+  }
+
+  // Tipo simple
+  const key = type.includes('Gym') ? 'gym' : type.includes('Box') ? 'box' :
+              type.includes('Carrera') ? 'run' : type.includes('HYROX') ? 'hyrox' :
+              type.includes('Movilidad') ? 'mobility' : null
+
+  const ejercicios = key ? EJERCICIOS[key] : []
+  container.innerHTML = renderSesionBlock(type, time1, ejercicios, notes)
+}
+
+function renderSesionBlock(title, time, ejercicios, notes) {
+  const timeStr = time ? ' · ' + time : ''
+  const exRows = ejercicios.map(e =>
+    `<div class="exercise-row">
+      <div class="ex-check" onclick="toggleEx(this)"></div>
+      <span class="ex-name">${e.name}</span>
+      <span class="ex-detail">${e.detail}</span>
+    </div>`
+  ).join('')
+  return `<div class="block">
+    <div class="block-header">
+      <span class="block-title">${title}${timeStr}</span>
+      <span class="tag tag-gym">Plan del día</span>
+    </div>
+    <div class="block-body">
+      ${exRows}
+      ${notes ? `<div style="font-size:12px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">📝 ${notes}</div>` : ''}
+    </div>
+  </div>`
+}
+
 // ─── MI SEMANA ─────────────────────────────────────────────────────────────
 const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
 const TIPOS_SESSION = ['🏋️ Gym','🥊 Box','🏋️🥊 Gym + Box','🏃 Carrera','⚡ Simulacro HYROX','🧘 Movilidad','😴 Descanso']
@@ -748,6 +829,9 @@ async function saveMiSemana() {
     if (error) throw error
     toast('Semana guardada ✓')
     document.getElementById('misemana-saved').style.display = 'block'
+    // Refrescar hoy
+    const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+    renderHoy(dias[todayIdx])
     loadMiSemanaHist()
   } catch(e) { toast('Error: ' + e.message) }
 }
@@ -756,7 +840,10 @@ async function loadMiSemana() {
   try {
     const { data } = await sb.from('weekly_schedule').select('*').eq('week_start', getWeekKey()).single()
     initMiSemana(data ? data.dias : null)
-  } catch { initMiSemana(null) }
+    // Render hoy — día de la semana (0=lun...6=dom)
+    const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+    renderHoy(data ? data.dias[todayIdx] : null)
+  } catch { initMiSemana(null); renderHoy(null) }
 }
 
 async function loadMiSemanaHist() {
