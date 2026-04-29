@@ -842,6 +842,84 @@ function initMiSemana(savedData = null) {
   }).join('')
 }
 
+// ─── SYNC CON AGENDA ───────────────────────────────────────────────────────
+const AGENDA_URL = 'https://ceandrszwpodniylpsgc.supabase.co'
+const AGENDA_KEY = 'sb_publishable_5e2AAqUBAes3rGp8JTsP5w_pSoIkq4m'
+
+async function syncAgenda(weekKey, dias) {
+  try {
+    // Leer blocks actuales de la agenda
+    const r = await fetch(`${AGENDA_URL}/rest/v1/agenda?type=eq.blocks&select=data`, {
+      headers: { 'apikey': AGENDA_KEY, 'Authorization': `Bearer ${AGENDA_KEY}` }
+    })
+    const d = await r.json()
+    let agendaData = d?.[0]?.data || { blocks: [], bId: 1 }
+    let blocks = agendaData.blocks || []
+    let bId = agendaData.bId || 1
+
+    // Eliminar bloques de entreno de esta semana (los que creamos antes)
+    const weekStart = new Date(weekKey + 'T00:00:00')
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6)
+    const weekEndStr = weekEnd.toISOString().split('T')[0]
+    blocks = blocks.filter(b => {
+      if (!b._hyrox) return true  // no es nuestro — no tocar
+      return b.date < weekKey || b.date > weekEndStr
+    })
+
+    // Crear nuevos bloques de entreno para cada día
+    const TYPE_LABELS = {
+      '🏋️ Gym': 'Gym', '🥊 Box': 'Box', '🏋️🥊 Gym + Box': 'Gym + Box',
+      '🏃 Carrera': 'Carrera', '⚡ Simulacro HYROX': 'Simulacro HYROX',
+      '🧘 Movilidad': 'Movilidad', '😴 Descanso': null
+    }
+
+    dias.forEach((dia, i) => {
+      const label = TYPE_LABELS[dia.type]
+      if (!label) return  // descanso — no crear evento
+
+      const date = new Date(weekStart)
+      date.setDate(weekStart.getDate() + i)
+      const dateStr = date.toISOString().split('T')[0]
+
+      // Sesión 1
+      if (dia.time1) {
+        const endMin = (parseInt(dia.time1.split(':')[0]) * 60 + parseInt(dia.time1.split(':')[1])) + 60
+        const timeEnd = `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`
+        blocks.push({
+          id: bId++, date: dateStr, time: dia.time1, timeEnd,
+          title: `🏋️ ${label}`, category: 'sport',
+          note: dia.notes || 'HYROX Tracker', recur: 'none',
+          done: false, _hyrox: true
+        })
+      }
+
+      // Sesión 2 (si hay — Gym + Box con dos horarios)
+      if (dia.time2 && dia.type === '🏋️🥊 Gym + Box') {
+        const endMin2 = (parseInt(dia.time2.split(':')[0]) * 60 + parseInt(dia.time2.split(':')[1])) + 60
+        const timeEnd2 = `${String(Math.floor(endMin2/60)).padStart(2,'0')}:${String(endMin2%60).padStart(2,'0')}`
+        const label2 = i === 0 ? 'Gym' : 'Box'
+        blocks.push({
+          id: bId++, date: dateStr, time: dia.time2, timeEnd: timeEnd2,
+          title: `🏋️ ${label2}`, category: 'sport',
+          note: dia.notes || 'HYROX Tracker', recur: 'none',
+          done: false, _hyrox: true
+        })
+      }
+    })
+
+    // Guardar en la agenda
+    await fetch(`${AGENDA_URL}/rest/v1/agenda?type=eq.blocks`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': AGENDA_KEY, 'Authorization': `Bearer ${AGENDA_KEY}`,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ data: { blocks, bId }, updated_at: new Date().toISOString() })
+    })
+    return true
+  } catch(e) { return false }
+}
+
 async function saveMiSemana() {
   const weekKey = getWeekKey(currentWeekOffset)
   const dias = DIAS.map((_, i) => ({
@@ -853,8 +931,12 @@ async function saveMiSemana() {
   try {
     const { error } = await sb.from('weekly_schedule').upsert({ week_start: weekKey, dias }, { onConflict: 'week_start' })
     if (error) throw error
-    toast('Semana guardada ✓')
+
+    // Sincronizar con la agenda
+    const synced = await syncAgenda(weekKey, dias)
+    toast(synced ? 'Semana guardada y agenda actualizada ✓' : 'Semana guardada ✓ (agenda no sincronizada)')
     document.getElementById('misemana-saved').style.display = 'block'
+
     // Refrescar hoy solo si es la semana actual
     if (currentWeekOffset === 0) {
       const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
